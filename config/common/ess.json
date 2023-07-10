@@ -1,0 +1,27 @@
+{"ESS":
+[
+  {"id": "ess0",
+  "name": "main",
+  "OnGrid": true,
+  "Capacity": 400000,
+  "ResponseTime": 10000,
+  "InactivityTime": 10000,
+  "MinSoc": 10,
+  "MaxSoc":90,
+  "InitialSoc":50,
+  "DischargePower": 90000,
+  "ChargePower":78000},
+
+  {"id": "ess1",
+  "name": "support",
+  "OnGrid": true,
+  "Capacity": 220000,
+  "ResponseTime": 2000,
+  "InactivityTime": 2000,
+  "MinSoc": 5,
+  "MaxSoc":95,
+  "InitialSoc":50,
+  "DischargePower": 276000,
+  "ChargePower":276000}
+]
+  }
