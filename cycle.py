@@ -1,9 +1,7 @@
-from datetime import datetime, timedelta
+from datetime import datetime
 
-import java_classes
 from const import date_format, one_second, time_zone
 from java_classes import *
-
 
 def advance_one_second(clock):
     now = Instant.now(clock)

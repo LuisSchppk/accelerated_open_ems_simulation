@@ -1,6 +1,7 @@
 import os
 import re
-import fastparquet
+import timeit
+
 import pandas as pd
 
 from const import date_time_str
@@ -51,3 +52,10 @@ def read_cycles(cycles_path, sim_id):
     cycle_counts = pd.read_csv(f'{cycles_path}/cycle_counts_{sim_id}.csv', index_col=date_time_str)
     cycle_counts.index = pd.to_datetime(cycle_counts.index)
     return main_charge_cycles, main_discharge_cycles, support_charge_cycles, support_discharge_cycles, cycle_counts
+
+
+def id_to_site_and_remainder(sim_id):
+    split = sim_id.split('_')
+    site = split[0]
+    remainder = '_'.join(split[1:])
+    return site, remainder

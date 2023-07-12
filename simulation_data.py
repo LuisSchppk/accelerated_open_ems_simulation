@@ -9,8 +9,8 @@ class SimulationData:
                                    support_charge_cycle_count_str: 0}
         self.discharge_cycle_count = {main_discharge_cycle_count_str: 0,
                                       support_discharge_cycle_count_str: 0}
-        self.activations ={main_battery_activations_str: 0,
-                           support_battery_activations_str: 0}
+        self.activations = {main_battery_activations_str: 0,
+                            support_battery_activations_str: 0}
 
     def update_count(self, key, value):
         if key is main_charge_cycle_count_str or key is support_charge_cycle_count_str:
@@ -18,7 +18,7 @@ class SimulationData:
         elif key is main_discharge_cycle_count_str or key is support_discharge_cycle_count_str:
             self.discharge_cycle_count.update({key: value})
         elif key is main_battery_activations_str or support_battery_activations_str:
-            self.activations.update({key:value})
+            self.activations.update({key: value})
         else:
             raise Exception(f'Key {key} not found for updating data.')
 
@@ -33,4 +33,3 @@ class SimulationData:
         else:
             raise Exception(f'Key {key} not found for getting data.')
         return value
-

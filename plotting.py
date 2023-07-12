@@ -51,7 +51,6 @@ def plot_additional_metrics(df, sim_id, result_path):
     plt.show()
 
     ax = df[[main_power_step_str, support_power_step_str]].boxplot(ylabel='Power Step in [W]')
-    ax.set_xticklabels(['Main', 'Support'])
     plt.tight_layout()
     plt.savefig(f'{result_path}/Power_Step_{sim_id}.pdf')
     plt.show()

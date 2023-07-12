@@ -1,17 +1,14 @@
+import os
 import re
 
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-import config
 from apply_utils import mask_only_hess_sell_to_grid, get_hess_sells_surplus, autarky_hess, self_consumption
 from const import *
 from plotting import plot_results, plot_additional_metrics, plot_charge_cycles, plot_discharge_cycles
-from simulation_data import SimulationData
-from utils import interval_to_duration, append_to_csv, append_to_fastparquet, append_series, read_cycles
-
-f_result_path = 'Results/{}'
+from utils import interval_to_duration, append_to_csv, append_to_fastparquet, append_series, read_cycles, \
+    id_to_site_and_remainder
 
 
 def stats_autarky_and_self_consumption(results, interval, sim_id, result_path):
@@ -122,7 +119,6 @@ def total_energies(grid_power, pv_power, hess_power, consumption, sim_id, interv
 
 
 def grid_limit_exceeded(grid_power, sim_id, result_path, grid_limit):
-
     limit_exceeded = grid_power.loc[abs(grid_power) > grid_limit]
     output = f'Total Number of Grid Limit exceeded: {limit_exceeded.size}'
     values = os.linesep.join(
@@ -142,13 +138,13 @@ def cleaned_power_step(active_power):
     return cleaned_active_power.diff()
 
 
-def battery_activations(active_power):
+def battery_activations(active_power, p_count):
     def increase_count():
         nonlocal count
         count += 1
         return count
 
-    count = 0
+    count = p_count
     mask_null = active_power == 0
     mask_start = active_power.diff(periods=-1) != 0
     mask_start = mask_start & mask_null
@@ -247,14 +243,14 @@ def additional_1s_metrics(df, sim_id, result_path, simulation_data):
     result[main_power_step_str] = cleaned_power_step(df[main_active_power_str])
     result[support_power_step_str] = cleaned_power_step(df[support_active_power_str])
 
-    result[main_battery_activations_str] = battery_activations(df[[main_active_power_str]].squeeze())
-    result[support_battery_activations_str] = battery_activations(df[[support_active_power_str]].squeeze())
+    result[main_battery_activations_str] = battery_activations(df[[main_active_power_str]].squeeze(),
+                                                               simulation_data.get_value(main_battery_activations_str))
+    result[support_battery_activations_str] = battery_activations(df[[support_active_power_str]].squeeze(),
+                                                                  simulation_data.get_value(
+                                                                      support_battery_activations_str))
 
-    result[main_battery_activations_str] = result[main_battery_activations_str] \
-                                           + simulation_data.get_value(main_battery_activations_str)
-    result[support_battery_activations_str] = result[support_battery_activations_str] \
-                                              + simulation_data.get_value(main_battery_activations_str)
-
+    tmp = result[main_battery_activations_str].max()
+    tmp2 = result[support_battery_activations_str].max()
     simulation_data.update_count(main_battery_activations_str, result[main_battery_activations_str].max())
     simulation_data.update_count(support_battery_activations_str, result[support_battery_activations_str].max())
 
@@ -325,7 +321,6 @@ def calculate_cycle_metrics(main_charge, main_discharge, support_charge, support
         text_file.write(output)
 
 
-
 def calculate_and_store_cycles(results, cycles_path, sim_id, interval, simulation_data):
     main_charge_cycles, main_charge_cycle_count = \
         battery_cycles(results[[main_active_power_str]].squeeze(),
@@ -379,8 +374,8 @@ def calculate_and_store_cycles(results, cycles_path, sim_id, interval, simulatio
 
 
 def evaluate_and_store_on_the_run(results, sim_id, simulation_data):
-    print('Chunk')
-    result_path = f_result_path.format(sim_id)
+    site, remainder = id_to_site_and_remainder(sim_id)
+    result_path = f_result_path.format(site, remainder)
     cycles_path = f'{result_path}/{cycle_counts_path}'
     os.makedirs(result_path, exist_ok=True)
     os.makedirs(cycles_path, exist_ok=True)
@@ -404,7 +399,8 @@ def evaluate_and_store_on_the_run(results, sim_id, simulation_data):
 
 
 def evaluate_and_store_final(sim_id, grid_limit):
-    result_path = f_result_path.format(sim_id)
+    site, remainder = id_to_site_and_remainder(sim_id)
+    result_path = f_result_path.format(site, remainder)
     results = pd.read_csv(f'{result_path}/{result_name_15m}.csv', index_col=date_time_str)
     cycles_path = f'{result_path}/{cycle_counts_path}'
 
@@ -420,7 +416,7 @@ def evaluate_and_store_final(sim_id, grid_limit):
     plot_results(df=results.copy(), result_path=result_path, sim_id=sim_id)
 
     calculate_cycle_metrics(main_charge_cycles, main_discharge_cycles, support_charge_cycles, support_discharge_cycles,
-                            sim_id,'1s', cycles_path)
+                            sim_id, '1s', cycles_path)
 
     plot_additional_metrics(additional_metrics, sim_id, result_path)
     plot_charge_cycles(cycle_counts[main_charge_cycle_count_str].squeeze(),
