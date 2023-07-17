@@ -10,7 +10,7 @@ ManagedHybridEss = autoclass('io.openems.edge.simulator.ess.symmetric.hybrid.Ess
 Config = autoclass('io.openems.edge.simulator.pythonBridge.EssConfig')
 ChannelUpdater = autoclass('io.openems.edge.simulator.pythonBridge.ChannelUpdater')
 DummyPower = autoclass('io.openems.edge.simulator.pythonBridge.SimulatedPower')
-DummyConfigurationAdmin = autoclass(('io.openems.edge.common.test.DummyConfigurationAdmin'))
+DummyConfigurationAdmin = autoclass('io.openems.edge.common.test.DummyConfigurationAdmin')
 SimulatedCycleWorker = autoclass('io.openems.edge.simulator.pythonBridge.SimulatedCycleWorker')
 
 Event = autoclass('org.osgi.service.event.Event')

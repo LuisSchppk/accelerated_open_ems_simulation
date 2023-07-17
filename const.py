@@ -73,4 +73,4 @@ df_columns = [date_time_str,
               consumption_str,
               production_str]
 
-worker_count = 12 # multiprocessing.cpu_count()
+worker_count = multiprocessing.cpu_count()

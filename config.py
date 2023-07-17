@@ -2,7 +2,7 @@ from const import support_capacity, main_capacity
 from java_classes import Config
 
 main_config = Config('ess0',  # id
-                    'main',  # name
+                     'main',  # name
                      True,  # OnGrid
                      main_capacity,  # Capacity
                      1_200,  # Ramp Rate
@@ -12,11 +12,13 @@ main_config = Config('ess0',  # id
                      90,  # Max. SoC
                      50,  # Initial SoC
                      90_000,  # Discharge Power
-                     78_000  # Charge Power
+                     78_000,  # Charge Power
+                     [20, 70],  # lowerSocBorder
+                     [20, 70]  # upperSocBorder
                      )
 
 support_config = Config('ess1',  # id
-                       'support',  # name
+                        'support',  # name
                         True,  # OnGrid
                         support_capacity,  # Capacity
                         100_000,  # Ramp Rate
@@ -26,7 +28,7 @@ support_config = Config('ess1',  # id
                         95,  # Max. SoC
                         50,  # Initial SoC
                         276_000,  # Discharge Power
-                        276_000  # Charge Power
+                        276_000,  # Charge Power
+                        [20, 50],  # lowerSocBorder
+                        [20, 50]  # upperSocBorder
                         )
-
-

@@ -3,8 +3,10 @@ from simulation_utils import all_parallel, all_sequential
 
 if __name__ == '__main__':
     start_string = "2022-04-01T11:00:00Z"
-    simulation_time = 29 * 24 * 3600 + 13 * 3600  # 29d 13h 16:15-18:45
-    chunk_size = 24 * 3600
+    simulation_time = 29 * 24 * 3600 + 13 * 3600  # 29d 13h
+    chunk_size = 72 * 3600
+    # pypy
+    # 24h 59s vs python 21s
     # full time:
     # 96->255s.
     # 96-> 271s
@@ -22,10 +24,13 @@ if __name__ == '__main__':
     # mixed:
     # 46: 24-> 159
 
-    sites = ['CS', 'H', 'NH', 'C', 'OC', 'TZE']
-    # sites = ['NH']
-    seasons = [summer_str, winter_str]
-    grid_limits = [high_grid_limit_str, low_grid_limit_str]
+    # sites = ['CS', 'H', 'NH', 'C', 'OC', 'TZE']
+    # seasons = [summer_str, winter_str]
+    # grid_limits = [high_grid_limit_str, low_grid_limit_str]
+
+    sites = ['H']
+    seasons = [summer_str]
+    grid_limits = [high_grid_limit_str]
 
     all_parallel(sites=sites, start_string=start_string, simulation_time=simulation_time, chunk_size=chunk_size)
 

@@ -1,7 +1,8 @@
 from matplotlib import pyplot as plt
 
 from const import main_active_power_str, support_active_power_str, main_soc_str, support_soc_str, grid_str, \
-    main_battery_activations_str, support_battery_activations_str, main_power_step_str, support_power_step_str
+    main_battery_activations_str, support_battery_activations_str, main_power_step_str, support_power_step_str, \
+    production_str, consumption_str
 
 
 def plot_results(df, sim_id, result_path):
@@ -22,6 +23,10 @@ def plot_results(df, sim_id, result_path):
     plt.tight_layout()
     plt.savefig(f'{result_path}/Grid_{sim_id}.pdf')
     plt.show()
+
+    df[[consumption_str, production_str]].plot(ylabel='Power in [W]', xlabel='')
+    plt.tight_layout()
+    plt.savefig(f'{result_path}/production_consumption_{sim_id}.pdf')
 
 
 def plot_charge_cycles(main_charge_cycles, support_charge_cycles, sim_id, cycles_path):

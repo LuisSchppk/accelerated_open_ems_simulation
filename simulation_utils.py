@@ -56,11 +56,15 @@ def preprocess_load_production(data, modifier):
 def all_parallel(sites, start_string, simulation_time, chunk_size):
     seasons = [summer_str, winter_str]
     grid_limits = [high_grid_limit_str, low_grid_limit_str]
+
+    seasons = [summer_str]
+    grid_limits = [high_grid_limit_str]
+
     summer_production = pd.read_csv(f'config/Production/Summer.csv')['Power']
     winter_production = pd.read_csv('config/Production/Winter.csv')['Power']
 
-    summer_production = preprocess_load_production(data=summer_production, modifier=1_000)
-    winter_production = preprocess_load_production(data=winter_production, modifier=1_000)
+    summer_production = preprocess_load_production(data=summer_production, modifier=20)
+    winter_production = preprocess_load_production(data=winter_production, modifier=1)
 
     items = list()
     sim_ids = list()
