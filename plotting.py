@@ -1,11 +1,13 @@
+import pandas as pd
 from matplotlib import pyplot as plt
 
 from const import main_active_power_str, support_active_power_str, main_soc_str, support_soc_str, grid_str, \
     main_battery_activations_str, support_battery_activations_str, main_power_step_str, support_power_step_str, \
-    production_str, consumption_str
+    production_str, consumption_str, main_capacity, support_capacity
 
 
 def plot_results(df, sim_id, result_path):
+
     # Active Power
     ax = df[[main_active_power_str, support_active_power_str]].plot(ylabel='Power in [W]', xlabel='')
     plt.tight_layout()
@@ -14,8 +16,25 @@ def plot_results(df, sim_id, result_path):
 
     # SoC
     ax = df[[main_soc_str, support_soc_str]].plot(ylabel='SoC in [%]', xlabel='')
+    # ax.axhline(y=20, xmin=0, xmax=1, c='red')
+    # ax.axhline(y=22, xmin=0, xmax=1, c='red')
+    # ax.axhline(y=50, xmin=0, xmax=1, c='orange')
+    # ax.axhline(y=70, xmin=0, xmax=1, c='green')
     plt.tight_layout()
     plt.savefig(f'{result_path}/SoC_{sim_id}.pdf')
+    plt.show()
+
+    # Abs Stored power
+    abs_energy = df[[main_soc_str, support_soc_str]]
+    abs_energy.loc[:, main_soc_str] *= main_capacity
+    abs_energy.loc[:, support_soc_str] *= support_capacity
+    # abs_energy[main_soc_str] = abs_energy[[main_soc_str]] * main_capacity
+    # abs_energy[support_soc_str] = abs_energy[[support_soc_str]] * support_capacity
+    abs_energy = abs_energy.rename(columns={main_soc_str: 'Main Stored Energy', support_soc_str: 'Support Stored Energy'})
+
+    ax = abs_energy.plot(ylabel='Stored Energy in Wh', xlabel='')
+    plt.tight_layout()
+    plt.savefig(f'{result_path}/abs_energy_{sim_id}.pdf')
     plt.show()
 
     # Grid power

@@ -13,7 +13,7 @@ main_config = Config('ess0',  # id
                      50,  # Initial SoC
                      90_000,  # Discharge Power
                      78_000,  # Charge Power
-                     [20, 70],  # lowerSocBorder
+                     [17, 70],  # lowerSocBorder
                      [20, 70]  # upperSocBorder
                      )
 
@@ -29,6 +29,6 @@ support_config = Config('ess1',  # id
                         50,  # Initial SoC
                         276_000,  # Discharge Power
                         276_000,  # Charge Power
-                        [20, 50],  # lowerSocBorder
+                        [17, 50],  # lowerSocBorder
                         [20, 50]  # upperSocBorder
                         )

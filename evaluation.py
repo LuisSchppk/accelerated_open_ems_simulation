@@ -68,21 +68,44 @@ def stats_autarky_and_self_consumption(results, interval, sim_id, result_path):
         text_file.write(output)
 
 
-def total_energies(grid_power, pv_power, hess_power, consumption, sim_id, interval, result_path):
+def total_energies(grid_power, pv_power, hess_power, main_power, support_power, consumption, sim_id, interval, result_path):
     grid_consumption = grid_power.copy()
     sell_to_grid = grid_power.copy()
     pv_power = pv_power.copy()
-    hess_discharge = hess_power.copy()
-    hess_charge = hess_power.copy()
     consumption = consumption.copy()
+
+    hess_charge = hess_power.copy()
+    hess_discharge = hess_power.copy()
+
+    main_charge = main_power.copy()
+    main_discharge = main_power.copy()
+
+    support_charge = support_power.copy()
+    support_discharge = support_power.copy()
+
+    interval_duration = interval_to_duration(interval)
 
     grid_consumption.loc[grid_consumption < 0] = 0
     sell_to_grid.loc[sell_to_grid > 0] = 0
-    interval_duration = interval_to_duration(interval)
-    hess_discharge.loc[hess_discharge < 0] = 0
+
     hess_charge.loc[hess_charge >= 0] = 0
+    hess_discharge.loc[hess_discharge < 0] = 0
+
+    main_charge.loc[main_charge >= 0] = 0
+    main_discharge.loc[main_discharge < 0] = 0
+
+    support_charge.loc[support_charge >= 0] = 0
+    support_discharge.loc[support_discharge < 0 ] = 0
+
     total_hess_charged = hess_charge.sum() * interval_duration
     total_hess_discharged = hess_discharge.sum() * interval_duration
+
+    total_main_charged = main_charge.sum() * interval_duration
+    total_main_discharged = main_discharge.sum() * interval_duration
+
+    total_support_charged = support_charge.sum() * interval_duration
+    total_support_discharged = support_discharge.sum() * interval_duration
+
     total_consumption = consumption.sum() * interval_duration
 
     df = pd.DataFrame({'grid_consumption': grid_consumption,
@@ -106,11 +129,17 @@ def total_energies(grid_power, pv_power, hess_power, consumption, sim_id, interv
                               - (hess_sells_surplus.sum() * interval_duration)
     total_pv_consumed = total_pv_produced + (total_energy_sold_to_grid - total_hess_sold_to_grid)
     output = f'Total Energy Consumed : {total_consumption} [Wh] {os.linesep}' \
-             f'Total Grid Energy Consumed : {total_grid_energy_consumed} [Wh] {os.linesep}' \
              f'Total PV Energy Produced : {total_pv_produced} [Wh] {os.linesep}' \
              f'Total PV Energy Consumed : {total_pv_consumed} [Wh] {os.linesep}' \
+             f'Total Grid Energy Consumed : {total_grid_energy_consumed} [Wh] {os.linesep}' \
+             f'Batteries: {os.linesep}' \
              f'Total Energy Charged to HESS : {total_hess_charged} [Wh] {os.linesep}' \
              f'Total Energy Discharged by HESS : {total_hess_discharged} [Wh] {os.linesep}' \
+             f'Total Energy Charged to MAIN : {total_main_charged} [Wh] {os.linesep}' \
+             f'Total Energy Discharged by MAIN : {total_main_discharged} [Wh] {os.linesep}' \
+             f'Total Energy Charged to SUPPORT : {total_support_charged} [Wh] {os.linesep}' \
+             f'Total Energy Discharged by SUPPORT : {total_support_discharged} [Wh] {os.linesep}' \
+             f'Sell to Grid: {os.linesep}' \
              f'Total Energy Sold to Grid : {total_energy_sold_to_grid} [Wh] {os.linesep}' \
              f'Total HESS Energy Sold to Grid : {total_hess_sold_to_grid} [Wh] {os.linesep}' \
              f'Total PV Energy Sold To Grid : {-(total_pv_produced - total_pv_consumed)} [Wh]'
@@ -402,15 +431,20 @@ def evaluate_and_store_final(sim_id, grid_limit):
     site, remainder = id_to_site_and_remainder(sim_id)
     result_path = f_result_path.format(site, remainder)
     results = pd.read_csv(f'{result_path}/{result_name_15m}.csv', index_col=date_time_str)
+    results.index = pd.to_datetime(results.index)
     cycles_path = f'{result_path}/{cycle_counts_path}'
 
     main_charge_cycles, main_discharge_cycles, support_charge_cycles, support_discharge_cycles, cycle_counts \
         = read_cycles(cycles_path, sim_id)
     additional_metrics = pd.read_csv(f'{result_path}/additional_metrics_{sim_id}.csv', index_col=date_time_str)
+    additional_metrics.index = pd.to_datetime(additional_metrics.index)
 
     stats_autarky_and_self_consumption(results=results, result_path=result_path, sim_id=sim_id, interval='15m')
     total_energies(grid_power=results[grid_str].squeeze(), pv_power=results[production_str].squeeze(),
-                   hess_power=results[hess_active_power_str].squeeze(), consumption=results[consumption_str].squeeze(),
+                   hess_power=results[hess_active_power_str].squeeze(),
+                   main_power=results[main_active_power_str].squeeze(),
+                   support_power=results[support_active_power_str].squeeze(),
+                   consumption=results[consumption_str].squeeze(),
                    result_path=result_path, interval='15m', sim_id=sim_id)
     grid_limit_exceeded(results[grid_str].squeeze(), result_path=result_path, sim_id=sim_id, grid_limit=grid_limit)
     plot_results(df=results.copy(), result_path=result_path, sim_id=sim_id)

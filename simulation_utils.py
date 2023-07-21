@@ -57,8 +57,8 @@ def all_parallel(sites, start_string, simulation_time, chunk_size):
     seasons = [summer_str, winter_str]
     grid_limits = [high_grid_limit_str, low_grid_limit_str]
 
-    seasons = [summer_str]
-    grid_limits = [high_grid_limit_str]
+    # seasons = [winter_str]
+    # grid_limits = [high_grid_limit_str]
 
     summer_production = pd.read_csv(f'config/Production/Summer.csv')['Power']
     winter_production = pd.read_csv('config/Production/Winter.csv')['Power']
@@ -71,14 +71,14 @@ def all_parallel(sites, start_string, simulation_time, chunk_size):
     for site in sites:
         consumption = pd.read_csv(f'config/Consumption/{site}.csv')['Power']
         consumption = preprocess_load_production(consumption, 1)
-        simulation_time = min(len(consumption)*consumption_time_resolution, simulation_time)
+        simulation_time = min(len(consumption) * consumption_time_resolution, simulation_time)
         for season in seasons:
             if season is summer_str:
                 production = summer_production
-                simulation_time = min(simulation_time, len(summer_production)*production_time_resolution)
+                simulation_time = min(simulation_time, len(summer_production) * production_time_resolution)
             elif season is winter_str:
                 production = winter_production
-                simulation_time = min(simulation_time, len(winter_production)*production_time_resolution)
+                simulation_time = min(simulation_time, len(winter_production) * production_time_resolution)
             else:
                 raise Exception(f'Unknown Season: {season}')
             for limit_type in grid_limits:
@@ -149,6 +149,9 @@ def all_sequential(sites, start_string, simulation_time, chunk_size):
     for site in sites:
         consumption = pd.read_csv(f'config/Consumption/{site}.csv')['Power']
         consumption = preprocess_load_production(consumption, 1)
+        simulation_time = min(len(consumption) * consumption_time_resolution, simulation_time)
+        summer_simulation_time = min(simulation_time, len(summer_production) * production_time_resolution)
+        winter_simulation_time = min(simulation_time, len(winter_production) * production_time_resolution)
 
         # Summer High Grid
         sim_id = f'{site}_Summer_High_Grid'
@@ -159,7 +162,7 @@ def all_sequential(sites, start_string, simulation_time, chunk_size):
                         production_array=summer_production,
                         consumption_array=consumption,
                         grid_limit=high_grid_limit,
-                        p_simulation_time=simulation_time, p_chunk_size=chunk_size)
+                        p_simulation_time=summer_simulation_time, p_chunk_size=chunk_size)
         stop = timeit.default_timer()
         print(stop - start)
 
@@ -172,11 +175,11 @@ def all_sequential(sites, start_string, simulation_time, chunk_size):
                         production_array=summer_production,
                         consumption_array=consumption,
                         grid_limit=low_grid_limit,
-                        p_simulation_time=simulation_time, p_chunk_size=chunk_size)
+                        p_simulation_time=summer_simulation_time, p_chunk_size=chunk_size)
         stop = timeit.default_timer()
         print(stop - start)
 
-        # Summer High Grid
+        # Winter High Grid
         sim_id = f'{site}_Winter_High_Grid'
         print(f'Run {sim_id}')
         start = timeit.default_timer()
@@ -185,11 +188,11 @@ def all_sequential(sites, start_string, simulation_time, chunk_size):
                         production_array=winter_production,
                         consumption_array=consumption,
                         grid_limit=high_grid_limit,
-                        p_simulation_time=simulation_time, p_chunk_size=chunk_size)
+                        p_simulation_time=winter_simulation_time, p_chunk_size=chunk_size)
         stop = timeit.default_timer()
         print(stop - start)
 
-        # Summer High Grid
+        # Winter Grid
         sim_id = f'{site}_Winter_Low_Grid'
         print(f'Run {sim_id}')
         start = timeit.default_timer()
@@ -198,7 +201,7 @@ def all_sequential(sites, start_string, simulation_time, chunk_size):
                         production_array=winter_production,
                         consumption_array=consumption,
                         grid_limit=low_grid_limit,
-                        p_simulation_time=simulation_time, p_chunk_size=chunk_size)
+                        p_simulation_time=winter_simulation_time, p_chunk_size=chunk_size)
         stop = timeit.default_timer()
         print(stop - start)
 

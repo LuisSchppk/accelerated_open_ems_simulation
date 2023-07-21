@@ -41,6 +41,8 @@ cdef c_fast_cycle_loop_java(int p_simulation_time, int p_column_count,
         int_results[cycle_count % chunk_size, 7] = cycle_worker.getGridActivePower()
         int_results[cycle_count % chunk_size, 8] = cycle_worker.getCurrentConsumption()
         int_results[cycle_count % chunk_size, 9] = cycle_worker.getCurrentProduction()
+        int_results[cycle_count % chunk_size, 10] = cycle_worker.getMainSoCState()
+        int_results[cycle_count % chunk_size, 11] = cycle_worker.getSupportSoCState()
     evaluate_and_store_on_the_run(int_results[:(cycle_count % chunk_size)], sim_id, simulation_data)
 
 def fast_cycle_loop_java(columns, int simulation_time, int production_time_resolution,

@@ -22,6 +22,8 @@ main_charge_cycle_count_str = 'Main Charge Cycle Count'
 main_discharge_cycle_count_str = 'Main Discharge Cycle Count'
 support_charge_cycle_count_str = 'Support Charge Cycle Count'
 support_discharge_cycle_count_str = 'Support Discharge Cycle Count'
+main_soc_state_str = "Main SoC State"
+support_soc_state_str = "Support SoC State"
 
 cycle_special_metric_str = 'Barbaras Metric'
 cycle_energy_str = 'total energy [Wh]'
@@ -71,6 +73,8 @@ df_columns = [date_time_str,
               hess_soc_str,
               grid_str,
               consumption_str,
-              production_str]
+              production_str,
+              main_soc_state_str,
+              support_soc_state_str]
 
 worker_count = multiprocessing.cpu_count()
