@@ -40,15 +40,27 @@ def stats_autarky_and_self_consumption(results, interval, sim_id, result_path):
     mask_consumption = results[consumption_str] <= 0
     mask_untrivial_autarky = mask_hess & mask_consumption
     mask_untrivial_autarky = ~mask_untrivial_autarky
-    untrivial_autarky = results.loc[mask_untrivial_autarky, [autarky_str]].squeeze()
+    untrivial_autarky = results.loc[mask_untrivial_autarky, [autarky_str]]
+
     mean_untrivial_autarky = untrivial_autarky.mean()
     median_untrivial_autarky = untrivial_autarky.median()
 
+    if isinstance(mean_untrivial_autarky, pd.Series):
+        mean_untrivial_autarky = mean_untrivial_autarky.squeeze()
+
+    if isinstance(median_untrivial_autarky, pd.Series):
+        median_untrivial_autarky = median_untrivial_autarky.squeeze()
+
     mask = results[production_str] == 0
     mask = ~mask
-    untrivial_self_consumption = results.loc[mask, [self_consumption_str]].squeeze()
-    mean_untrivial_self_consumption = untrivial_self_consumption.mean()
-    median_untrivial_self_consumption = untrivial_self_consumption.median()
+    untrivial_self_consumption = results.loc[mask, [self_consumption_str]]
+
+    if not isinstance(untrivial_self_consumption, np.int64):
+        mean_untrivial_self_consumption = untrivial_self_consumption.mean()
+        median_untrivial_self_consumption = untrivial_self_consumption.median()
+    else:
+        mean_untrivial_self_consumption = untrivial_self_consumption
+        median_untrivial_self_consumption = untrivial_self_consumption
 
     output = os.linesep.join([f'Max Feasible Autarky and SC',
                               f'Max. Autarky {max_autarky} [%]',
@@ -68,7 +80,8 @@ def stats_autarky_and_self_consumption(results, interval, sim_id, result_path):
         text_file.write(output)
 
 
-def total_energies(grid_power, pv_power, hess_power, main_power, support_power, consumption, sim_id, interval, result_path):
+def total_energies(grid_power, pv_power, hess_power, main_power, support_power, consumption, sim_id, interval,
+                   result_path):
     grid_consumption = grid_power.copy()
     sell_to_grid = grid_power.copy()
     pv_power = pv_power.copy()
@@ -95,7 +108,7 @@ def total_energies(grid_power, pv_power, hess_power, main_power, support_power, 
     main_discharge.loc[main_discharge < 0] = 0
 
     support_charge.loc[support_charge >= 0] = 0
-    support_discharge.loc[support_discharge < 0 ] = 0
+    support_discharge.loc[support_discharge < 0] = 0
 
     total_hess_charged = hess_charge.sum() * interval_duration
     total_hess_discharged = hess_discharge.sum() * interval_duration
@@ -229,6 +242,7 @@ def battery_cycles(active_power, date_time, interval, is_charge, p_count, total_
 
     # Exit early if no cycles were detected. Not nice, but apply(...) fails for some reason on empty df.
     if cycles.empty:
+        # create as df not series for index
         cycle_count = pd.DataFrame(data=np.full(active_power.size, count), index=date_time).squeeze()
         cycles = pd.DataFrame(columns=[cycle_start_str,
                                        cycle_stop_str,
@@ -288,6 +302,23 @@ def additional_1s_metrics(df, sim_id, result_path, simulation_data):
     append_to_csv(result, filename)
 
 
+def cycle_metric_helper(durations, energies, powers, ratios):
+    avg_cycle_duration = durations.mean()
+    avg_total_energy = energies.mean()
+    avg_mean_power = powers.mean()
+    avg_ratio_metric = ratios.mean()
+
+    if isinstance(avg_cycle_duration, pd.Series):
+        avg_cycle_duration = avg_cycle_duration.squeeze()
+    if isinstance(avg_total_energy, pd.Series):
+        avg_total_energy = avg_total_energy.squeeze()
+    if isinstance(avg_total_energy, pd.Series):
+        avg_mean_power = avg_mean_power.squeeze()
+    if isinstance(avg_total_energy, pd.Series):
+        avg_ratio_metric = avg_ratio_metric.squeeze()
+    return avg_cycle_duration, avg_total_energy, avg_mean_power, avg_ratio_metric
+
+
 def calculate_cycle_metrics(main_charge, main_discharge, support_charge, support_discharge, sim_id,
                             interval, result_path):
     unit = re.sub('[0-9]', '', interval)
@@ -315,20 +346,14 @@ def calculate_cycle_metrics(main_charge, main_discharge, support_charge, support
     overall_mean_power = pd.concat([tmp, discharge_mean_power])
     overall_ratio_metric = pd.concat([charge_ratio_metric, discharge_ratio_metric])
 
-    avg_charge_cycle_duration = charge_cycle_durations.mean().squeeze()
-    avg_charge_total_energy = charge_total_energy.mean().squeeze()
-    avg_charge_mean_power = charge_mean_power.mean().squeeze()
-    avg_charge_ratio_metric = charge_ratio_metric.mean().squeeze()
+    avg_charge_cycle_duration, avg_charge_total_energy, avg_charge_mean_power, avg_charge_ratio_metric \
+        = cycle_metric_helper(charge_cycle_durations, charge_total_energy, charge_mean_power, charge_ratio_metric)
 
-    avg_discharge_cycle_duration = discharge_cycle_durations.mean().squeeze()
-    avg_discharge_total_energy = discharge_total_energy.mean().squeeze()
-    avg_discharge_mean_power = discharge_mean_power.mean().squeeze()
-    avg_discharge_ratio_metric = discharge_ratio_metric.mean().squeeze()
+    avg_discharge_cycle_duration, avg_discharge_total_energy, avg_discharge_mean_power, avg_discharge_ratio_metric \
+        = cycle_metric_helper(discharge_cycle_durations, discharge_total_energy, discharge_mean_power, discharge_ratio_metric)
 
-    avg_overall_cycle_duration = overall_cycle_durations.mean().squeeze()
-    avg_overall_total_energy = overall_total_energy.mean().squeeze()
-    avg_overall_mean_power = overall_mean_power.mean().squeeze()
-    avg_overall_ratio_metric = overall_ratio_metric.mean().squeeze()
+    avg_overall_cycle_duration, avg_overall_total_energy, avg_overall_mean_power, avg_overall_ratio_metric \
+        = cycle_metric_helper(overall_cycle_durations, overall_total_energy, overall_mean_power, overall_ratio_metric)
 
     output = os.linesep.join(['Charge',
                               f'Average Charge Cycle Duration: {avg_charge_cycle_duration}',
