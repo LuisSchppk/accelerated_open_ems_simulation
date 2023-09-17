@@ -3,7 +3,8 @@ from matplotlib import pyplot as plt
 
 from const import main_active_power_str, support_active_power_str, main_soc_str, support_soc_str, grid_str, \
     main_battery_activations_str, support_battery_activations_str, main_power_step_str, support_power_step_str, \
-    production_str, consumption_str, main_capacity, support_capacity
+    production_str, consumption_str
+from config import main_capacity, support_capacity
 
 
 def plot_results(df, sim_id, result_path):

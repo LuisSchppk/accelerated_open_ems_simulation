@@ -40,30 +40,6 @@ date_format = '%Y-%m-%dT%H:%M:%SZ'
 one_second = timedelta(seconds=1)
 time_zone = 'Europe/Paris'
 
-summer_str = 'Summer'
-winter_str = 'Winter'
-
-high_grid_limit_str='High'
-low_grid_limit_str='Low'
-
-low_grid_limit = 100_000
-high_grid_limit = 200_000
-default_min_energy = 50_000
-
-main_capacity = 400_000
-support_capacity = 220_000
-
-consumption_time_resolution = 1 * 60  # 1min
-production_time_resolution = 15 * 60  # 15min
-
-production_modifier = 20
-consumption_modifier = 1
-
-time_resolution = '15min'
-cycle_counts_path = 'cycle_counts'
-
-f_result_path = 'Results/{}/{}'
-
 df_columns = [date_time_str,
               main_active_power_str,
               support_active_power_str,
@@ -76,5 +52,3 @@ df_columns = [date_time_str,
               production_str,
               main_soc_state_str,
               support_soc_state_str]
-
-worker_count = multiprocessing.cpu_count()

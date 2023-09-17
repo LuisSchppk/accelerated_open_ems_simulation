@@ -5,13 +5,22 @@ import numpy as np
 import pandas as pd
 
 from apply_utils import mask_only_hess_sell_to_grid, get_hess_sells_surplus, autarky_hess, self_consumption
+from config import f_result_path, cycle_counts_path, support_capacity, main_capacity, time_resolution
 from const import *
 from plotting import plot_results, plot_additional_metrics, plot_charge_cycles, plot_discharge_cycles
 from utils import interval_to_duration, append_to_csv, append_to_fastparquet, append_series, read_cycles, \
-    id_to_site_and_remainder
+    id_to_site_and_season_grid
 
 
 def stats_autarky_and_self_consumption(results, interval, sim_id, result_path):
+    """
+    Calculation of avg. mean, and max. Autarky and Selfconsumption
+    :param results: pd.Dataframe containing the final results.
+    :param interval: time resolution of the results.
+    :param sim_id:
+    :param result_path:
+    :return:
+    """
     mean_autarky = results[autarky_str].mean()
     median_autarky = results[autarky_str].median()
     mean_self_consumption = results[self_consumption_str].mean()
@@ -170,7 +179,13 @@ def grid_limit_exceeded(grid_power, sim_id, result_path, grid_limit):
         text_file.write(output)
 
 
-def cleaned_power_step(active_power):
+def calculate_power_step(active_power):
+    """
+    Calculate the power step, i.e., the difference of one power value to the next power value.
+
+    :param active_power: pd.Series containing the power values.
+    :return: pd.Series containing the power step values.
+    """
     mask = False
     tmp = active_power.diff()
     tmp[0] = 0
@@ -181,6 +196,12 @@ def cleaned_power_step(active_power):
 
 
 def battery_activations(active_power, p_count):
+    """
+    Calculate the battery activations. An activation is any time point where to power goes from 0 to some value != 0.
+    :param active_power: pd.Series containing the power values.
+    :param p_count: Amount of activations passed from last chunk by simulation_data.
+    :return:
+    """
     def increase_count():
         nonlocal count
         count += 1
@@ -196,7 +217,20 @@ def battery_activations(active_power, p_count):
     return battery_activations_count
 
 
-def battery_cycles(active_power, date_time, interval, is_charge, p_count, total_capacity):
+def battery_cycles(active_power, date_time_index, interval, is_charge, p_count, total_capacity):
+    """
+    Calculates a Charge and Discharge Battery Cycle for one batterie.
+    One Battery Cycle is the Time between a time step where power = 0 to where
+    power = 0 again or the sign changes.
+
+    :param active_power: pd.Series containing the power values.
+    :param date_time_index: pd.Series containing the date_time_index of the result df.
+    :param interval: time resolution of the results.
+    :param is_charge: Flag whether the charge or discharge cycles are examined.
+    :param p_count: Amount of activations passed from last chunk by simulation_data.
+    :param total_capacity: Capacity of the Battery in [Wh].
+    :return:
+    """
     def increase_count():
         nonlocal count
         count += 1
@@ -212,24 +246,35 @@ def battery_cycles(active_power, date_time, interval, is_charge, p_count, total_
     unit = re.sub('[0-9]', '', interval)
     filtered_power = active_power.copy()
 
-    # Normalize charging to positive and remove active power belonging to other type of use.
     if is_charge:
+        # Normalize charging to positive and remove active power belonging to other type of use.
         filtered_power[filtered_power > 0] = 0
         filtered_power = filtered_power * -1
     else:
+        #  Set all entries where the battery charges to zero.
         filtered_power[filtered_power < 0] = 0
 
+    # Boolean mask: entry is zero.
     mask_null = filtered_power == 0
+
+    # Boolean mask: Power increased.
     mask_start = filtered_power.diff(periods=-1) < 0
+
+    # Boolean mask: Power decreased.
     mask_stop = filtered_power.diff() < 0
+
+    # Boolean mask: Power increased from 0 to some value != 0.
     mask_start = mask_start & mask_null
+
+    # Boolean mask: Power decreased from some value != 0 to 0
     mask_stop = mask_stop & mask_null
 
-    # Trivial Start if the examined interval began with charging/ discharging
+    # Trivial Start if the examined interval began with charging/ discharging.
     mask_start[0] = filtered_power[0] > 0
     if filtered_power[0] == 0 and filtered_power[1] > 0:
         mask_start[0] = True
 
+    # Convert Boolean Masks to array containing the indices where mask is true.
     start_indices = np.where(mask_start)[0]
     stop_indices = np.where(mask_stop)[0]
 
@@ -237,13 +282,14 @@ def battery_cycles(active_power, date_time, interval, is_charge, p_count, total_
     if start_indices.size > stop_indices.size:
         stop_indices = np.append(stop_indices, [filtered_power.size - 1])
 
+    # Add Column with all Start indices and Column with the respective stop indices.
     cycles[cycle_start_str] = start_indices
     cycles[cycle_stop_str] = stop_indices
 
     # Exit early if no cycles were detected. Not nice, but apply(...) fails for some reason on empty df.
     if cycles.empty:
         # create as df not series for index
-        cycle_count = pd.DataFrame(data=np.full(active_power.size, count), index=date_time).squeeze()
+        cycle_count = pd.DataFrame(data=np.full(active_power.size, count), index=date_time_index).squeeze()
         cycles = pd.DataFrame(columns=[cycle_start_str,
                                        cycle_stop_str,
                                        f_cycle_duration_str.format(unit),
@@ -254,37 +300,62 @@ def battery_cycles(active_power, date_time, interval, is_charge, p_count, total_
         return cycles, cycle_count
 
     # Calculate cycle metrics.
+
+    # Duration of the Cycle.
     cycles[f_cycle_duration_str.format(unit)] = (stop_indices - start_indices) * int((re.sub('[A-Za-z]', '', interval)))
+
+    # Total Energy in [Wh] Charged or discharged during the cycle.
     cycles[cycle_energy_str] = cycles[[cycle_start_str, cycle_stop_str]].apply(
         lambda x: (filtered_power.iloc[x[0]:x[1]].sum() * interval_duration),
         axis=1)
+
+    # Mean Power [W] charged with or discharged with during the cycle.
     cycles[cycle_mean_power_str] = cycles[[cycle_start_str, cycle_stop_str]].apply(
         lambda x: filtered_power.iloc[x[0]:x[1]].mean(),
         axis=1)
+
+    # Median Power [W] charged with or discharged with during the cycle.
     cycles[cycle_median_power_str] = cycles[[cycle_start_str, cycle_stop_str]].apply(
         lambda x: filtered_power.iloc[x[0]:x[1]].median(),
         axis=1)
+
+    # 'Special Metric' (We do not know the correct name) Energy [Wh] divided by Total Capacity [Wh] of the Battery.
     cycles[cycle_special_metric_str] = cycles[cycle_energy_str].apply(lambda x: x / total_capacity)
 
     # Convert start from idx to datetime.
-    cycles[cycle_start_str] = cycles[cycle_start_str].apply(lambda x: pd.to_datetime(date_time.iat[int(x)]))
-    cycles[cycle_stop_str] = cycles[cycle_stop_str].apply(lambda x: date_time.iat[int(x)])
+    cycles[cycle_start_str] = cycles[cycle_start_str].apply(lambda x: pd.to_datetime(date_time_index.iat[int(x)]))
+    cycles[cycle_stop_str] = cycles[cycle_stop_str].apply(lambda x: date_time_index.iat[int(x)])
 
     # Calculate Cycle Count over date time for plot.
     cycle_count = pd.Series(data=mask_start)
     cycle_count = cycle_count.apply((lambda x: increase_count() if x else count))
     cycle_count = pd.DataFrame(data=cycle_count)
-    cycle_count[date_time_str] = date_time
+    cycle_count[date_time_str] = date_time_index
     cycle_count = cycle_count.set_index(date_time_str, drop=True)
 
     return cycles, cycle_count.squeeze()
 
 
 def additional_1s_metrics(df, sim_id, result_path, simulation_data):
+    """
+    Calculates the metrics 'main_power_step', 'support_power_step'
+    and 'main_battery_activations', 'support_battery_activations'.
+
+    Both metrics have not been really used to estimate the performance of the ESS System. Power Step helped me to
+    identify some bugs.
+    I think the code for Battery Activations might be bugged. The code for the Cycle metrics is more up to date in this
+    regard.
+
+    :param df: pd.Dataframe containing the base results.
+    :param sim_id: Simulation ID to name result files according to simulation and scenario.
+    :param result_path: Filepath to location where results should be stored.
+    :param simulation_data: DSO containing values which need to be persistent across chunks.
+    :return:
+    """
     result = df.copy()
 
-    result[main_power_step_str] = cleaned_power_step(df[main_active_power_str])
-    result[support_power_step_str] = cleaned_power_step(df[support_active_power_str])
+    result[main_power_step_str] = calculate_power_step(df[main_active_power_str])
+    result[support_power_step_str] = calculate_power_step(df[support_active_power_str])
 
     result[main_battery_activations_str] = battery_activations(df[[main_active_power_str]].squeeze(),
                                                                simulation_data.get_value(main_battery_activations_str))
@@ -376,6 +447,18 @@ def calculate_cycle_metrics(main_charge, main_discharge, support_charge, support
 
 
 def calculate_and_store_cycles(results, cycles_path, sim_id, interval, simulation_data):
+    """
+    Calculates the Charge and Discharge Battery Cycle metrics for all batteries.
+    One Battery Cycle is the Time between a time step where power = 0 to where
+    power = 0 again or the sign changes.
+
+    :param results: pd.Dataframe containing the results
+    :param cycles_path: Filepath to store the results.
+    :param sim_id: Simulation ID to name result files according to simulation and scenario.
+    :param interval: time resolution of the results.
+    :param simulation_data: DSO containing values which need to be persistent across chunks.
+    :return:
+    """
     main_charge_cycles, main_charge_cycle_count = \
         battery_cycles(results[[main_active_power_str]].squeeze(),
                        results[[date_time_str]].squeeze(),
@@ -408,16 +491,20 @@ def calculate_and_store_cycles(results, cycles_path, sim_id, interval, simulatio
                        simulation_data.get_value(support_discharge_cycle_count_str),
                        support_capacity)
 
+    # Build one DF from the single results.
     cycle_counts = pd.DataFrame({main_charge_cycle_count_str: main_charge_cycle_count,
                                  main_discharge_cycle_count_str: main_discharge_cycle_count,
                                  support_charge_cycle_count_str: support_charge_cycle_count,
                                  support_discharge_cycle_count_str: support_discharge_cycle_count})
 
+    # Update the persistent DSO for the next Chunk.
     simulation_data.update_count(main_charge_cycle_count_str, main_charge_cycle_count.max())
     simulation_data.update_count(main_discharge_cycle_count_str, main_discharge_cycle_count.max())
     simulation_data.update_count(support_charge_cycle_count_str, support_charge_cycle_count.max())
     simulation_data.update_count(support_discharge_cycle_count_str, support_discharge_cycle_count.max())
 
+    # Store intermediary results as csv.
+    # TODO: With time resolution of 1s it might be faster to convert this to fastparquet as well.
     append_to_csv(main_charge_cycles, f'{cycles_path}/main_charge_{sim_id}.csv', False)
     append_to_csv(main_discharge_cycles, f'{cycles_path}/main_discharge_{sim_id}.csv', False)
     append_to_csv(support_charge_cycles, f'{cycles_path}/support_charge_{sim_id}.csv', False)
@@ -427,43 +514,56 @@ def calculate_and_store_cycles(results, cycles_path, sim_id, interval, simulatio
     return main_charge_cycles, main_discharge_cycles, support_charge_cycles, support_discharge_cycles, cycle_counts
 
 
-def evaluate_and_store_on_the_run(results, sim_id, simulation_data):
-    site, remainder = id_to_site_and_remainder(sim_id)
-    result_path = f_result_path.format(site, remainder)
+def evaluate_and_store_intermediary_results(results, sim_id, simulation_data):
+
+    # Construct result path from simulation id
+    site, season_grid = id_to_site_and_season_grid(sim_id)
+    result_path = f_result_path.format(site, season_grid)
     cycles_path = f'{result_path}/{cycle_counts_path}'
+
+    # Create directories for results.
     os.makedirs(result_path, exist_ok=True)
     os.makedirs(cycles_path, exist_ok=True)
 
+    # convert np.ndarray of results to pd.Dataframe.
     results = pd.DataFrame(data=results, columns=df_columns)
 
+    # Convert int date time to pd.datetime.
     results[date_time_str] = pd.to_datetime(results[date_time_str], unit='s')
 
+    # Append the base results to the parquet file of previous intermediary results of this simulation.
     append_to_fastparquet(results, f'{result_path}/{result_name_1s}.parquet')
 
-    # 1s metrics
+    # Calculate the extended results. which have a time resolution of [1s]
     additional_1s_metrics(results, sim_id, result_path, simulation_data)
     calculate_and_store_cycles(results, cycles_path, sim_id, '1s', simulation_data)
 
-    # time_resolution (15m) metrics
+    # Down sample time_resolution for base results from 1s to 15m
     results = results.set_index(date_time_str, drop=True)
     results = results.resample(time_resolution).mean()
+
+    # Calculate the metrics, which have a 15min time resolution. Autarky and Self Consumption.
     results[autarky_str] = results.apply(autarky_hess, axis=1)
     results[self_consumption_str] = results.apply(self_consumption, axis=1)
     append_to_csv(results, f'{result_path}/{result_name_15m}.csv')
 
 
 def evaluate_and_store_final(sim_id, grid_limit):
-    site, remainder = id_to_site_and_remainder(sim_id)
-    result_path = f_result_path.format(site, remainder)
+
+    # Construct result path from simulation id
+    site, season_grid = id_to_site_and_season_grid(sim_id)
+    result_path = f_result_path.format(site, season_grid)
     results = pd.read_csv(f'{result_path}/{result_name_15m}.csv', index_col=date_time_str)
     results.index = pd.to_datetime(results.index)
     cycles_path = f'{result_path}/{cycle_counts_path}'
 
+    # Read the total intermediary results to evaluate the final results.
     main_charge_cycles, main_discharge_cycles, support_charge_cycles, support_discharge_cycles, cycle_counts \
         = read_cycles(cycles_path, sim_id)
     additional_metrics = pd.read_csv(f'{result_path}/additional_metrics_{sim_id}.csv', index_col=date_time_str)
     additional_metrics.index = pd.to_datetime(additional_metrics.index)
 
+    # Calculate final metrics
     stats_autarky_and_self_consumption(results=results, result_path=result_path, sim_id=sim_id, interval='15m')
     total_energies(grid_power=results[grid_str].squeeze(), pv_power=results[production_str].squeeze(),
                    hess_power=results[hess_active_power_str].squeeze(),

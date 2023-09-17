@@ -1,13 +1,17 @@
-from const import support_capacity, main_capacity
+import multiprocessing
+
 from java_classes import Config
+
+main_capacity = 400_000
+support_capacity = 220_000
 
 main_config = Config('ess0',  # id
                      'main',  # name
                      True,  # OnGrid
                      main_capacity,  # Capacity
-                     1_200,  # Ramp Rate
-                     10_000,  # Response Time
-                     10_000,  # Inactivity Time
+                     1_200,  # Ramp Rate [W/s]
+                     10_000,  # Response Time [ms]
+                     10_000,  # Inactivity Time [ms]
                      10,  # Min. SoC
                      90,  # Max. SoC
                      50,  # Initial SoC
@@ -32,3 +36,34 @@ support_config = Config('ess1',  # id
                         [17, 50],  # lowerSocBorder
                         [20, 50]  # upperSocBorder
                         )
+
+summer_str = 'Summer'
+winter_str = 'Winter'
+
+high_grid_limit_str = 'High'
+low_grid_limit_str = 'Low'
+
+low_grid_limit = 100_000
+high_grid_limit = 200_000
+
+grid_limits = {high_grid_limit_str: high_grid_limit,
+               low_grid_limit_str: low_grid_limit}
+
+default_min_energy = 50_000
+
+# Time delta in [s] between to entries of the input consumption data.
+consumption_time_resolution = 1 * 60  # 1min
+
+# Time delta in [s] between to entries of the input production data.
+production_time_resolution = 15 * 60  # 15min
+
+production_modifiers = {summer_str: 20, winter_str: 1}
+consumption_modifiers = {}
+
+time_resolution = '15min'
+cycle_counts_path = 'cycle_counts'
+
+f_result_path = 'Results/{}/{}'
+
+worker_count = multiprocessing.cpu_count()
+

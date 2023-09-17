@@ -3,7 +3,9 @@ from const import main_charge_cycle_count_str, support_charge_cycle_count_str, m
 
 
 class SimulationData:
-
+    """
+    Class for Data Storage Object used to store certain values across different chunks of the simulation.
+    """
     def __init__(self):
         self.charge_cycle_count = {main_charge_cycle_count_str: 0,
                                    support_charge_cycle_count_str: 0}

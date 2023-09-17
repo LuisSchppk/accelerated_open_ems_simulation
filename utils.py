@@ -27,6 +27,7 @@ def append_to_csv(df, filename, index=True):
 
 def append_to_fastparquet(df, filename, index=True):
     if not os.path.isfile(filename):
+        # if respective parquet file does not exist yet, create it.
         df.to_parquet(filename, engine='fastparquet')
     else:
         df.to_parquet(filename, engine='fastparquet', append=True, index=index)
@@ -54,8 +55,8 @@ def read_cycles(cycles_path, sim_id):
     return main_charge_cycles, main_discharge_cycles, support_charge_cycles, support_discharge_cycles, cycle_counts
 
 
-def id_to_site_and_remainder(sim_id):
+def id_to_site_and_season_grid(sim_id):
     split = sim_id.split('_')
     site = split[0]
-    remainder = '_'.join(split[1:])
-    return site, remainder
+    season_grid = '_'.join(split[1:])
+    return site, season_grid
