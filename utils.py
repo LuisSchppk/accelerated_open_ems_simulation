@@ -51,6 +51,8 @@ def read_cycles(cycles_path, sim_id):
     support_charge_cycles = pd.read_csv((f'{cycles_path}/support_charge_{sim_id}.csv'))
     support_discharge_cycles = pd.read_csv(f'{cycles_path}/support_discharge_{sim_id}.csv')
     cycle_counts = pd.read_csv(f'{cycles_path}/cycle_counts_{sim_id}.csv', index_col=date_time_str)
+
+    # Make sure df has index that is an actual datetime index.
     cycle_counts.index = pd.to_datetime(cycle_counts.index)
     return main_charge_cycles, main_discharge_cycles, support_charge_cycles, support_discharge_cycles, cycle_counts
 

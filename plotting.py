@@ -17,10 +17,6 @@ def plot_results(df, sim_id, result_path):
 
     # SoC
     ax = df[[main_soc_str, support_soc_str]].plot(ylabel='SoC in [%]', xlabel='')
-    # ax.axhline(y=20, xmin=0, xmax=1, c='red')
-    # ax.axhline(y=22, xmin=0, xmax=1, c='red')
-    # ax.axhline(y=50, xmin=0, xmax=1, c='orange')
-    # ax.axhline(y=70, xmin=0, xmax=1, c='green')
     plt.tight_layout()
     plt.savefig(f'{result_path}/SoC_{sim_id}.pdf')
     plt.show()

@@ -35,6 +35,8 @@ def mask_only_hess_sell_to_grid(row):
     sell_to_grid = row[1]
     pv_production = row[2]
     hess_discharge = row[3]
+
+    # Only the HESS sells to grid, if energy is sold to grid and there is no PV production.
     return sell_to_grid != 0 and pv_production == 0 and hess_discharge != 0
 
 

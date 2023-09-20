@@ -114,7 +114,7 @@ def all_parallel(sites, seasons, grid_limits_str, start_string, simulation_time,
         consumption_modifier = consumption_modifiers.get(site)
         if consumption_modifier is None:
             consumption_modifier = 1
-        consumption = preprocess_load_production(consumption, consumption_modifier)
+        consumption = preprocess_load_production(consumption, 1)
 
         # Adjust simulation time to be at most as long as the shortest input.
         simulation_time = min(len(consumption) * consumption_time_resolution, simulation_time)
